@@ -9,7 +9,7 @@
 
 
 ## Presentation
-You can find the presention under the pdf folder: [Bayesian A/B-testing]("pdf/Bayesian%20AB-testing.pdf")
+You can find the presention under the pdf folder: [Bayesian A/B-testing](pdf/Bayesian%20AB-testing.pdf)
 
 
 # Contact
