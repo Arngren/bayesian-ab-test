@@ -11,9 +11,17 @@ import numpy as np
 
 import sys
 
+# Import for video creation uisng matplotlib
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.animation as manimation
+from matplotlib.colors import rgb2hex
+
 # reload(sys)
 # sys.setdefaultencoding('utf8')
 
+__author__ = "Morten Arngren"
 
 ########################################################################################################################
 class visualisation(object):
@@ -212,6 +220,38 @@ class visualisation(object):
         return c if type(c) == str else cl.scales['custom'][np.mod(c,n_colors)]
 
 
+class Video:
+    """ Class to make animations
+    """
+
+    def __init__(self,framerate=10, xlabel='', x_lim=1, y_lim=1, n_versions=4, colormap=[], txt_pos=0.4):
+        FFMpegWriter = manimation.writers['ffmpeg']
+        metadata = dict(title='Movie Test', artist='Matplotlib', comment='')
+        self.writer = FFMpegWriter(fps=framerate, metadata=metadata)
+
+        self.fig = plt.figure(figsize=(12,6), dpi=100, facecolor='#202020', edgecolor='#202020')
+        plt.margins(10)
+
+        ax = plt.gca()
+        self.fig.patch.set_facecolor('#202020')
+        ax.set_facecolor('#202020')
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel('#')
+        ax.spines['bottom'].set_color('#AAAAAA')
+        ax.spines['top'].set_color('#AAAAAA')
+        ax.spines['left'].set_color('#AAAAAA')
+        ax.spines['right'].set_color('#AAAAAA')
+        ax.xaxis.label.set_color('#AAAAAA')
+        ax.tick_params(axis='x', colors='#AAAAAA')
+
+        if colormap == []:
+            colorsteps = math.floor(255/n_versions)
+            colormap = [rgb2hex(np.array([255,colorsteps*i,colorsteps*i])/255) for i in range(n_versions)]
+        self.plts = [plt.plot([], [], colormap[i], linewidth=3)[0] for i in range(n_versions)]
+        plt.xlim([0, x_lim])
+        plt.ylim([0, y_lim])
+        self.txt_time = plt.figtext(0.2, txt_pos, "", fontsize=12, color='#AAAAAA')
+        ax.get_yaxis().set_visible(False)
 
 
 ########################################################################################################################
