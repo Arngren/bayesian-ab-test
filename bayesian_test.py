@@ -71,6 +71,34 @@ class Bayesian_AB_Test:
             jsd = jensenshannon( pdf_a, pdf_b )
             return jsd
 
+    def p_ab(self, rvs: List, best: str = 'max', thr: float = 1, n_samples: int =10000):
+        """ Calc. probability that all variant are better than the rest
+            one by one.
+
+        Args:
+            rvs (List): list of scipy.stats objects
+            thr (float, optional): threshold. Defaults to 1.
+            n_samples (int, optional): number of samples. Defaults to 10000.
+
+        Returns:
+            P_ab_thr (List): list of probabilities that each variant is better than the rest
+        """
+        # Generate samples from all variants
+        samples = np.array( [rv.rvs(size=n_samples) for rv in rvs] )
+
+        # Calc. probability that a variant is better than the rest
+        P_ab_thr = []
+        for id_ref in range(len(rvs)):
+            # Identify the rest of the variants
+            id_rest = [i for i in range(len(rvs)) if i != id_ref]
+            # Calc. probability ratio that ref is better than the rest
+            P_ratio = samples[id_ref] / np.max(samples[id_rest], axis=0)
+            # Calc. prob. mass above threshold and save for each variant
+            if best == 'max':
+                P_ab_thr += [ (P_ratio>thr).sum() / n_samples ]
+            if best == 'min':
+                P_ab_thr += [ (P_ratio<thr).sum() / n_samples ]
+        return P_ab_thr
 
     def p_ba(self, rv_a, rv_b, n_samples: int=10000) -> float:
         """ probability of B having higher performance than A
@@ -82,7 +110,6 @@ class Bayesian_AB_Test:
         """
         # sampling our way out of it...
         P = np.sum( rv_a.rvs(size=n_samples) < rv_b.rvs(size=n_samples) ) / n_samples
-
         return P
 
     def p_ba_beta(self, alpha_a: float, beta_a: float, alpha_b: float, beta_b: float) -> float:
@@ -103,12 +130,13 @@ class Bayesian_AB_Test:
         return P
 
 
-    def loss(self, rv_a, rv_b, N: int=100) -> List:
+    def loss(self, rv_a, rv_b, f_max: float=1, N: int=100) -> List:
         """ calc. the loss - ie. amount of performance lost if wrong variant is chosen
         
         Args:
             rv_a (scipy.stats): random variable function for variant A
             rv_b (scipy.stats): random variable function for variant B
+            f_max (float): max. value for the pdf
             N (int): number of pdf divisions for integration
         """
         # util function to calc. loss
@@ -116,18 +144,27 @@ class Bayesian_AB_Test:
             return max(j/N - i/N, 0)
 
         # util function
-        def __joint_posterior_array(rv_a, rv_b, f_max=1, N=100):
-            joint = np.array( [rv_a.pdf(ii) * rv_b.pdf(np.linspace(0,f_max,N)) for i,ii in enumerate(np.linspace(0,f_max,N))] )
+        def __joint_posterior_array(rv_a, rv_b, f_max, N=100):
+            joint = np.array( [rv_a.pdf(ii) * rv_b.pdf(np.linspace(0,f_max,N)) for i,ii in enumerate(np.linspace(0,f_max,N))] ) + 1e-16
             return joint/joint.sum()
 
         loss_a, loss_b = 0, 0
-        joint = __joint_posterior_array(rv_a, rv_b, f_max=1, N=N)
+        # calc. f_max based in std of gamma distributions
+        # if isinstance(rv_a, gamma):
+        #     f_max = 5 * rv_a.std()
+        # if isinstance(rv_b, gamma):
+        #     f_max = max(f_max, 5 * rv_b.std())
+        if f_max == 0:
+            f_max = max(5*rv_a.std(), 5*rv_b.std())
+
+        # calc. loss
+        joint = __joint_posterior_array(rv_a, rv_b, f_max=f_max, N=N)
         for i in range(N):
             loss_a += sum( [joint[i,j]*__loss(i,j) for j in range(N)] )
             loss_b += sum( [joint[i,j]*__loss(j,i) for j in range(N)] )
 
         return loss_a, loss_b
-    
+
     def loss_parallel(self, x) -> List:
         """ wrapper function for calc. loss in parallel using multiprocessing
             assuming the gamma distribution!
@@ -157,11 +194,11 @@ class Bayesian_AB_Test:
         # loss_b = B(c+1, d) / B(c, d) * (1-self.p_ba_anal(c+1, d, a, b) \
         #        - B(a+1, b) / B(a, b) * (1-self.p_ba_anal(c, d, a+1, b)
 
-        # log domain calc.
-        loss_a = np.exp( betaln(c+1, d) - betaln(c, d) + np.log(1-self.p_ba(beta(c+1,d), beta(a,b), n_samples=n_samples)) ) \
-               - np.exp( betaln(a+1, b) - betaln(a, b) + np.log(1-self.p_ba(beta(c,d), beta(a+1,b), n_samples=n_samples)) )
-        loss_b = np.exp( betaln(a+1, b) - betaln(a, b) + np.log(1-self.p_ba(beta(a+1,b), beta(c,d), n_samples=n_samples)) ) \
-               - np.exp( betaln(c+1, d) - betaln(c, d) + np.log(1-self.p_ba(beta(a,b), beta(c+1,d), n_samples=n_samples)) )
+        # log domain calc. - TODO: p_ab has two outputs...[1] correct?
+        loss_a = np.exp( betaln(c+1, d) - betaln(c, d) + np.log(1-self.p_ab([beta(c+1,d), beta(a,b)], n_samples=n_samples)[1]) ) \
+               - np.exp( betaln(a+1, b) - betaln(a, b) + np.log(1-self.p_ab([beta(c,d), beta(a+1,b)], n_samples=n_samples)[1]) )
+        loss_b = np.exp( betaln(a+1, b) - betaln(a, b) + np.log(1-self.p_ab([beta(a+1,b), beta(c,d)], n_samples=n_samples)[1]) ) \
+               - np.exp( betaln(c+1, d) - betaln(c, d) + np.log(1-self.p_ab([beta(a,b), beta(c+1,d)], n_samples=n_samples)[1]) )
 
         return loss_a, loss_b
 
@@ -241,10 +278,16 @@ class Bayesian_AB_Test:
 
         # A/B test - both distributions
         print(f'- calc. P(B>A)...')
-        df['P_BA_b'] = df.progress_apply(lambda x: self.p_ba(rv_a=beta(x['alpha_a'],x['beta_a']), rv_b=beta(x['alpha_b'],x['beta_b']), n_samples=n_samples), axis=1)
-        df['P_AB_b'] = 1 - df.P_BA_b
-        df['P_BA_g'] = df.progress_apply(lambda x: self.p_ba(rv_a=gamma(a=x['a_a'],scale=x['scale_a']), rv_b=gamma(a=x['a_b'],scale=x['scale_b']), n_samples=n_samples), axis=1)
-        df['P_AB_g'] = 1 - df.P_BA_g
+        P = df.progress_apply(lambda x: self.p_ab( [beta(x['alpha_a'],x['beta_a']), beta(x['alpha_b'],x['beta_b'])], thr=1, n_samples=n_samples), axis=1)
+        df['P_AB_b'] = [_[0] for _ in P]
+        df['P_BA_b'] = [_[1] for _ in P]
+    
+        # df['P_BA_g'] = df.progress_apply(lambda x: self.p_ba(rv_a=gamma(a=x['a_a'],scale=x['scale_a']), rv_b=gamma(a=x['a_b'],scale=x['scale_b']), n_samples=n_samples), axis=1)
+        # df['P_AB_g'] = 1 - df.P_BA_g
+        P = df.progress_apply(lambda x: self.p_ab( [gamma(a=x['a_a'],scale=x['scale_a']), gamma(a=x['a_b'],scale=x['scale_b'])], thr=1, n_samples=n_samples), axis=1)
+        df['P_AB_g'] = [_[0] for _ in P]
+        df['P_BA_g'] = [_[1] for _ in P]
+    
         if config['metrics']['ks']:
             print(f'- calc. AB - Kolmogorov-Smirnov...')
             df['P_AB_b_ks'] = df.progress_apply(lambda x: self.p_overlap(rv_a=beta(x['alpha_a'],x['beta_a']), rv_b=beta(x['alpha_b'],x['beta_b']), metric='ks', n_samples=n_samples), axis=1)
