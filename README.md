@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-This repository contains Python code for Bayesian Bandit Testing, an advanced A/B testing method. It dynamically allocates traffic to different versions based on performance, leading to efficient use of traffic and higher conversion rates. The code also includes Bayesian A/B testing, power analysis, and generates various plots for result visualization.
+This repository contains Python code for Bayesian Bandit Testing, an advanced A/B testing method. It dynamically allocates traffic to different versions based on performance, leading to efficient use of traffic and higher conversion rates. The code also includes Bayesian A/B testing, and generates various plots for result visualization.
 
 ## Introduction
 
@@ -39,7 +39,7 @@ The Python code in this repository implements these A/B-testing methods for Clic
 
 In addition, there are a number of notebooks, which serve as the main code for the various parts:
 
-- `bayesian_ab_testing.ipynb`: This Jupyter notebook contains the main code for the Bayesian A/B Testing. It includes code for plotting power analysis results, winner probabilities, and differences between Bayesian and Chi2-test results. It uses the `BayesianTest` and `Campaign` classes to simulate campaigns and perform Bayesian tests on the data.
+- `bayesian_ab_testing.ipynb`: This Jupyter notebook contains the main code for the Bayesian A/B Testing. It includes code for plotting winner probabilities, and differences between Bayesian and Chi2-test results. It uses the `BayesianTest` and `Campaign` classes to simulate campaigns and perform Bayesian tests on the data.
 
 - `bayesian_bandit_AA_testing.ipynb` and `bayesian_bandit_AB_testing.ipynb`: These notebooks contain the code for Bayesian Bandit A/A and A/B testing respectively. They use the `BayesianBanditTest` and `Campaign` classes to simulate campaigns and perform Bayesian Bandit tests on the data.
 
@@ -64,7 +64,6 @@ To run the code, open the `bayesian_ab_testing.ipynb`, `bayesian_bandit_AA_testi
 
 ## Presentation
 You can find the presention under the pdf folder: [Bayesian A/B-testing](pdf/Bayesian%20AB-testing.pdf)
-
 
 
 ## Contributing
