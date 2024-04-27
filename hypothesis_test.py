@@ -4,7 +4,7 @@
 from typing import List
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency
+from scipy.stats import chi2_contingency, ttest_ind, norm
 
 __author__ = "Morten Arngren"
 
@@ -17,19 +17,41 @@ class Hypothesis_AB_Test:
         """
         pass
 
-    def calc_sample_size(self, p1: float, p2: float, Z_a: float=1.96, Z_b: float=0.842) -> int:
+    # def calc_sample_size_old(self, p1: float, p2: float, Z_a: float=1.64, Z_b: float=0.842) -> int:
+    #     """ calc. the sample size to be used in statistical testing
+
+    #     Args:
+    #         p1 (float): performance of variant A, eg. p1 = 0.35 (ctr)
+    #         p2 (float): performance of variant B, eg. p2 = 0.12 (ctr)
+    #         Z_a (float): confidence level (e.g., Z = 1.96 for 95% confidence)
+    #         Z_b (float): confidence level (e.g., Z = 0.842 for 80% confidence)
+    #     """
+    #     # calc. sample size for statistical testing
+    #     # n_samples = (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / X**2
+    #     n_samples = int( (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / (p2-p1)**2 ) + 1
+    #     return n_samples
+
+    def calc_sample_size(self, p1: float, p2: float, alpha: float=0.05, beta: float=0.2, side: str='single') -> int:
         """ calc. the sample size to be used in statistical testing
 
         Args:
             p1 (float): performance of variant A, eg. p1 = 0.35 (ctr)
             p2 (float): performance of variant B, eg. p2 = 0.12 (ctr)
-            Z_a (float): confidence level (e.g., Z = 1.96 for 95% confidence)
-            Z_b (float): confidence level (e.g., Z = 0.842 for 80% confidence)
+            alpha (float, optional): significance level. Defaults to 0.05.
+            beta (float, optional): (1-power) of the test. Defaults to 0.2, so power = 80%.
+            side (str, optional): single or double sided test. Defaults to 'single'.
         """
+        # calculate Z-values
+        if side == 'single':
+            Z_a = norm.ppf(1-alpha)
+            Z_b = norm.ppf(1-beta)
+        else:
+            Z_a = norm.ppf(1-alpha/2)
+            Z_b = norm.ppf(1-beta/2)
+
         # calc. sample size for statistical testing
-        # n_samples = (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / X**2
         n_samples = int( (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / (p2-p1)**2 ) + 1
-        return n_samples
+        return n_samples # , Z_a, Z_b
 
 
     def chi2_test(self, n_clicks_a: int, n_impr_a: int, n_clicks_b: int, n_impr_b: int) -> List[float]:
@@ -44,6 +66,22 @@ class Hypothesis_AB_Test:
         ct = np.array([[n_clicks_a+1, n_impr_a-n_clicks_a+1], [n_clicks_b+1, n_impr_b-n_clicks_b+1]])
         chi2, p, dof, ex = chi2_contingency(ct)
         return chi2, p, dof, ex
+
+    def t_test(self, cost_a: float, n_clicks_a: int, cost_b: float, n_clicks_b: int):
+        """ calc. one-sided t-test usign scipy library
+
+        Args:
+            cost_a (float): cost for variant A
+            n_clicks_a (int): number of clicks for variant A
+            cost_b (float): cost for variant B
+            n_clicks_b (int): number of clicks for variant B
+
+        Returns:
+            float: t-statistic
+            float: p-value
+        """
+        t, p = ttest_ind(cost_a, n_clicks_a, cost_b, n_clicks_b)
+        return t, p
 
 
     def transform(self, df: pd.DataFrame) ->  pd.DataFrame:
