@@ -27,7 +27,11 @@ Bayesian Bandit Testing incorporates the principles of multi-armed bandit algori
 The Python code in this repository implements these A/B-testing methods for Click Through Rate (CTR) and Cost-per-Click (CpC) optimization. It can be split in three parts
 
 - Classic Hypothesis Testing<br>
+<<<<<<< HEAD
   This is based on the chi-2 test from `scipy` as a reference and is implemented in the [hypothesis_test.py](hypothesis_test.py)
+=======
+  This is based on the chi-2 test from `scipy` as a reference and is implemented in the [hypothesis_test.py](src/utils/hypothesis_test.py)
+>>>>>>> f471f6b (go)
 
 - Bayesian A/B-Testing<br>
   The custom Bayesian A/B-test framework uses the Beta and Gamma distributions to capture and quanitify the uncertainty in an A/B-test. This allows for constant evalution and provides a much more intuitive alternative to hypothesis testing. It is implemented in the [bayesian_test.py](bayesian_test.py)
