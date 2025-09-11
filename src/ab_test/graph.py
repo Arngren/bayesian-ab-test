@@ -102,8 +102,8 @@ class Visualisation(object):
         if theme == "dark":
             l.update(
                 title={'text': title, 'font': {'size': 16, 'color': '#AAAAAA'}},
-                paper_bgcolor="#222222",
-                plot_bgcolor="#222222",
+                paper_bgcolor="#111122",
+                plot_bgcolor="#111122",
                 xaxis={
                     "color": "#AAAAAA",
                     "gridcolor": "#555555",

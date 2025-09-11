@@ -1,15 +1,15 @@
-colorlover # ==0.3.0
-matplotlib # ==3.6.3
-numpy # ==1.23.1
-pandas # ==1.5.3
-plotly # ==5.13.0
-scikit-learn # ==1.2.1
-scipy # ==1.10.0
-tqdm # ==4.64.1
-psutil
-nbformat
-kaleido
-ffmpeg-python
-streamlit # ==1.1.0
-orjson  # ==3.6.3
-watchdog
+colorlover==0.3.0
+matplotlib==3.10.3
+numpy==2.2.6
+pandas==2.2.3
+plotly==6.1.1
+scikit-learn==1.6.1
+scipy==1.15.3
+tqdm==4.67.1
+psutil==7.0.0
+nbformat==5.10.4
+kaleido==0.2.1
+ffmpeg-python==0.2.0
+streamlit==1.45.1
+orjson==3.10.18
+watchdog==6.0.0

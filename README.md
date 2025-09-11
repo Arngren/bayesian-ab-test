@@ -57,6 +57,9 @@ In addition, there are a number of notebooks, which serve as the main code for t
     source ~/venvs/recsys/bin/activate
     pip install -r requirements.txt
 
+### Install external utilities
+For creating simualtion videos, the FFMPEG library is required. It can be installed via its [website](https://www.ffmpeg.org).
+
 ### Run code
 
 To run the code, open the `bayesian_ab_testing.ipynb`, `bayesian_bandit_AA_testing.ipynb`, or `bayesian_bandit_AB_testing.ipynb` file in a Jupyter notebook environment and execute the cells. Make sure to have the `campaign.py`, `bayesian_test.py`, and `bayesian_bandit_test.py` files in the same directory.

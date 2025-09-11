@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from typing import List
+from matplotlib.pylab import beta
 import numpy as np
 import pandas as pd
 from scipy.stats import chi2_contingency, ttest_ind, norm
@@ -17,44 +18,84 @@ class Hypothesis_AB_Test:
         """
         pass
 
-    # def calc_sample_size_old(self, p1: float, p2: float, Z_a: float=1.64, Z_b: float=0.842) -> int:
+    # def calc_sample_size_old(self, p1: float, p2: float, alpha: float=0.05, beta: float=0.2, side: str='single') -> int:
     #     """ calc. the sample size to be used in statistical testing
 
     #     Args:
     #         p1 (float): performance of variant A, eg. p1 = 0.35 (ctr)
     #         p2 (float): performance of variant B, eg. p2 = 0.12 (ctr)
-    #         Z_a (float): confidence level (e.g., Z = 1.96 for 95% confidence)
-    #         Z_b (float): confidence level (e.g., Z = 0.842 for 80% confidence)
+    #         alpha (float, optional): significance level. Defaults to 0.05.
+    #         beta (float, optional): (1-power) of the test. Defaults to 0.2, so power = 80%.
+    #         side (str, optional): single or double sided test. Defaults to 'single'.
     #     """
-    #     # calc. sample size for statistical testing
-    #     # n_samples = (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / X**2
-    #     n_samples = int( (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / (p2-p1)**2 ) + 1
-    #     return n_samples
+    #     # calculate Z-values
+    #     if side == 'single':
+    #         Z_a = norm.ppf(1-alpha)
+    #         Z_b = norm.ppf(1-beta)
+    #     else:
+    #         Z_a = norm.ppf(1-alpha/2)
+    #         Z_b = norm.ppf(1-beta/2)
 
-    def calc_sample_size(self, p1: float, p2: float, alpha: float=0.05, beta: float=0.2, side: str='single') -> int:
-        """ calc. the sample size to be used in statistical testing
+    #     # calc. sample size for statistical testing
+    #     n_samples = int( (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / (p2-p1)**2 ) + 1
+    #     return n_samples # , Z_a, Z_b
+
+
+    def calc_sample_size(self, test_type: str, p_a: float, p_b: float, alpha: float=0.05, beta: float=0.2, alpha_side: str='single') -> tuple:
+        """ calc. the sample size to be used in statistical testing assuming a chi-square test
 
         Args:
-            p1 (float): performance of variant A, eg. p1 = 0.35 (ctr)
-            p2 (float): performance of variant B, eg. p2 = 0.12 (ctr)
+            test_type (str): type of test to perform, eg. 'Chi-square Test'
+            p_a (float): performance of variant A, eg. p_a = 0.35 (ctr)
+            p_b (float): performance of variant B, eg. p_b = 0.12 (ctr)
             alpha (float, optional): significance level. Defaults to 0.05.
             beta (float, optional): (1-power) of the test. Defaults to 0.2, so power = 80%.
-            side (str, optional): single or double sided test. Defaults to 'single'.
+            alpha_side (str, optional): single or double sided test. Defaults to 'single'.
         """
         # calculate Z-values
-        if side == 'single':
+        if alpha_side == 'single':
             Z_a = norm.ppf(1-alpha)
-            Z_b = norm.ppf(1-beta)
         else:
             Z_a = norm.ppf(1-alpha/2)
-            Z_b = norm.ppf(1-beta/2)
+        
+        # Beta is always one-sided
+        Z_b = norm.ppf(1-beta)
 
-        # calc. sample size for statistical testing
-        n_samples = int( (Z_a+Z_b)**2 * (p1*(1-p1) + p2*(1-p2)) / (p2-p1)**2 ) + 1
-        return n_samples # , Z_a, Z_b
+        # Effect size - use absolute value to handle negative differences
+        effect_size = abs(p_b - p_a)
+
+        n_samples = -1 # default value to indicate not calculated
+
+        if test_type == 'Chi-square Test':
+            # Handle edge cases
+            if effect_size == 0:
+                return -1, Z_a, Z_b
+            
+            # Pooled probability for equal groups
+            pooled_prob = (p_a + p_b) / 2
+            
+            # Variance under null hypothesis (pooled)
+            var_null = pooled_prob * (1 - pooled_prob)
+            
+            # Variance under alternative hypothesis
+            var_alt = (p_a * (1 - p_a) + p_b * (1 - p_b)) / 2
+            
+            # Sample size calculation per group for equal allocation
+            # Formula: n = (Z_α√(2*var_null) + Z_β√(2*var_alt))² / effect_size²
+            numerator = (Z_a * np.sqrt(2 * var_null) + Z_b * np.sqrt(2 * var_alt))**2
+            n_samples = numerator / (effect_size**2)
+            
+            # Handle infinite or invalid results
+            if np.isinf(n_samples) or np.isnan(n_samples) or n_samples <= 0:
+                return -1, Z_a, Z_b
+            
+            # Round up to ensure adequate power
+            n_samples = int(np.ceil(n_samples))
+
+        return n_samples, Z_a, Z_b
 
 
-    def chi2_test(self, n_clicks_a: int, n_impr_a: int, n_clicks_b: int, n_impr_b: int) -> List[float]:
+    def chi2_test(self, n_success_a: int, n_trails_a: int, n_success_b: int, n_trails_b: int) -> List[float]:
         """ calc. chi-square test
 
         Args:
@@ -63,9 +104,11 @@ class Hypothesis_AB_Test:
             n_clicks_b (int): number of clicks for variant B
             n_impr_b (int): number of impressions for variant B
         """
-        ct = np.array([[n_clicks_a+1, n_impr_a-n_clicks_a+1], [n_clicks_b+1, n_impr_b-n_clicks_b+1]])
+        ct = np.array([[n_success_a+1, n_trails_a-n_success_a+1], [n_success_b+1, n_trails_b-n_success_b+1]])
+        # print(ct)
         chi2, p, dof, ex = chi2_contingency(ct)
         return chi2, p, dof, ex
+
 
     def t_test(self, cost_a: float, n_clicks_a: int, cost_b: float, n_clicks_b: int):
         """ calc. one-sided t-test usign scipy library
@@ -82,7 +125,6 @@ class Hypothesis_AB_Test:
         """
         t, p = ttest_ind(cost_a, n_clicks_a, cost_b, n_clicks_b)
         return t, p
-
 
     def transform(self, df: pd.DataFrame) ->  pd.DataFrame:
         """ calc. accumulated staistics for all events
@@ -107,6 +149,23 @@ class Hypothesis_AB_Test:
         df = df.drop(columns=['test'])
 
         # for CpC metric
+        # try:
+        #     # loop through all rows
+        #     for i in range(len(df)):
+        #         acc_cost_a1 = df.at[i, 'acc_cost_a1']
+        #         acc_clicks_a1 = df.at[i, 'acc_clicks_a1']
+        #         acc_cost_a2 = df.at[i, 'acc_cost_a2']
+        #         acc_clicks_a2 = df.at[i, 'acc_clicks_a2']
+        #         self.chi2_test(acc_cost_a1, acc_clicks_a1, acc_cost_a2, acc_clicks_a2)
+
+        # except Exception as e:
+        #     print(f'Error in CpC metric: {e}')
+        #     print(i, acc_cost_a1, acc_clicks_a1, acc_cost_a2, acc_clicks_a2)
+        #     ct = np.array([[acc_cost_a1+1, acc_clicks_a1-acc_cost_a1+1], [acc_cost_a2+1, acc_clicks_a2-acc_cost_a2+1]])
+        #     print(ct)
+
+        # stop()
+
         df['chi2_A1A2_cpc'] = df.progress_apply(lambda x: self.chi2_test(x['acc_cost_a1'], x['acc_clicks_a1'], x['acc_cost_a2'], x['acc_clicks_a2']), axis=1)
         df['pvalue_A1A2_cpc'] = df.chi2_A1A2_cpc.apply(lambda x: x[1])
         df['chi2_A1A2_cpc'] = df.chi2_A1A2_cpc.apply(lambda x: x[0])
