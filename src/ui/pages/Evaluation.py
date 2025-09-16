@@ -217,6 +217,12 @@ class EvaluationAPP:
             if hypo_test_type == 'Chi-square Test':
                 self.utils.show_headline(f'{hypo_test_type}', 'h2')
 
+                # # if metric is CpC or CpA, show warning that this is not implemented
+                # if st.session_state['metric'] in ['CpC', 'CpA']:
+                #     self.utils.show_headline('Chi-square test is not applicable for CpC or CpA metric', 'h4', color=self.color_failure)
+                #     self.utils.show_headline('Observations are not count data', 'h6', color=self.color_failure)
+                #     return
+
                 # calculate the sample size
                 n_samples_required, Z_a, Z_b = self.hypo.calc_sample_size(test_type=hypo_test_type,
                                                                           p_a=perf_A, p_b=perf_B,
@@ -238,18 +244,8 @@ class EvaluationAPP:
                 # Debug - display equation and Z-values used...
                 st.markdown(f"<br><br>", unsafe_allow_html=True)
                 self.utils.show_headline('Sample Size Calculation', 'h5')
-                # st.markdown(f"<div style='text-align: center; margin-bottom: 0px; color: {self.color_default}'>Equation:</dic>", unsafe_allow_html=True)
                 st.latex(r"n = \frac{{(Z_a + Z_b)^2 \cdot (p_a \cdot (1 - p_a) + p_b \cdot (1 - p_b))}}{{(p_b - p_a)^2}}, \quad where")
                 st.latex(f"Z_a = {Z_a:.3f} \quad \land \quad  Z_b = {Z_b:.3f}")
-                # col1, col2 = st.columns(2)
-                # with col1:
-                #     # st.markdown(f"<div style='text-align: center; margin-bottom: 0px; color: {self.color_default}'>", unsafe_allow_html=True)
-                #     # st.markdown(f"$$n = \\frac{{(Z_a + Z_b)^2 \\cdot (p_a \\cdot (1 - p_a) + p_b \\cdot (1 - p_b))}}{{(p_b - p_a)^2}}$$", unsafe_allow_html=True)
-                #     # st.markdown(f"</div>", unsafe_allow_html=True)
-                #     st.latex(r"n = \frac{{(Z_a + Z_b)^2 \cdot (p_a \cdot (1 - p_a) + p_b \cdot (1 - p_b))}}{{(p_b - p_a)^2}}")
-
-                # with col2:
-                #     st.markdown(f"$$Z_a = {Z_a:.3f}$$<br>$$Z_b = {Z_b:.3f}$$", unsafe_allow_html=True)
 
                 st.markdown(f"<br>", unsafe_allow_html=True)
 

@@ -61,7 +61,7 @@ class ABTestAPP:
         # add simple description as text field
         st.markdown("""
             <div style='text-align: left;'>            
-            This app is Bayesian A/B test calculator for VML MAP team. It has two parts:
+            This app is Bayesian A/B test calculator with two parts:
             <ul>
                 <li><b>Experiment Design</b>: Calculate the sample size needed for a test</li>
                 <li><b>Evaluation</b>: Evalaute the test results of a test</li>
@@ -76,7 +76,7 @@ class ABTestAPP:
             <div style='text-align: center; margin-bottom: 0px;'>
             This app is a work-in-progress and is intended to be used for internal purposes only.
             For questions or improvements, reach out to
-            <a href="mailto:morten.arngren@wundermanthompson.com">Morten Arngren</a>
+            <a href="mailto:info@arngren.com">Morten Arngren</a>
             </div>
             """, unsafe_allow_html=True)
 

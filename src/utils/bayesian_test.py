@@ -218,9 +218,6 @@ class Bayesian_AB_Test:
             # calc. prob. of B > A
             PA_p_ba = [ self.p_ba(beta(clicks_a+1, impr-clicks_a+1), beta(clicks_b+1, impr-clicks_b+1) ) ]
 
-    # def p_ab_loss_api(self):
-    #     rvs
-    #     return self.p_ab_loss(rvs: List, best: str='max', thr: float=1, n_samples: int=10_000):
 
     def agg_stats(self, df: pd.DataFrame) -> pd.DataFrame:
         """ calc. aggregated statistics for all events, accumulated

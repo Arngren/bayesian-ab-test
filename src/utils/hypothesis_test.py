@@ -148,24 +148,6 @@ class Hypothesis_AB_Test:
         df['pvalue_ctr'] = df.test.apply(lambda x: x[1])
         df = df.drop(columns=['test'])
 
-        # for CpC metric
-        # try:
-        #     # loop through all rows
-        #     for i in range(len(df)):
-        #         acc_cost_a1 = df.at[i, 'acc_cost_a1']
-        #         acc_clicks_a1 = df.at[i, 'acc_clicks_a1']
-        #         acc_cost_a2 = df.at[i, 'acc_cost_a2']
-        #         acc_clicks_a2 = df.at[i, 'acc_clicks_a2']
-        #         self.chi2_test(acc_cost_a1, acc_clicks_a1, acc_cost_a2, acc_clicks_a2)
-
-        # except Exception as e:
-        #     print(f'Error in CpC metric: {e}')
-        #     print(i, acc_cost_a1, acc_clicks_a1, acc_cost_a2, acc_clicks_a2)
-        #     ct = np.array([[acc_cost_a1+1, acc_clicks_a1-acc_cost_a1+1], [acc_cost_a2+1, acc_clicks_a2-acc_cost_a2+1]])
-        #     print(ct)
-
-        # stop()
-
         df['chi2_A1A2_cpc'] = df.progress_apply(lambda x: self.chi2_test(x['acc_cost_a1'], x['acc_clicks_a1'], x['acc_cost_a2'], x['acc_clicks_a2']), axis=1)
         df['pvalue_A1A2_cpc'] = df.chi2_A1A2_cpc.apply(lambda x: x[1])
         df['chi2_A1A2_cpc'] = df.chi2_A1A2_cpc.apply(lambda x: x[0])

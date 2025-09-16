@@ -26,6 +26,8 @@ from ab_test.graph import Visualisation
 # Main function
 class ExperimentDesignAPP:
     def __init__(self) -> None:
+        st.set_page_config(layout="wide")
+
         self.hypo = Hypothesis_AB_Test()
         self.bayes = Bayesian_AB_Test()
 

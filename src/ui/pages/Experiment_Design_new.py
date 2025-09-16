@@ -16,7 +16,7 @@ import streamlit as st
 
 from utils.hypothesis_test import Hypothesis_AB_Test
 from utils.bayesian_test import Bayesian_AB_Test
-from src.utils.ui import ABTestUtils, show_hypothesis_input_fields, ShowButtons
+from utils.ui import ABTestUtils, show_hypothesis_input_fields, ShowButtons
 from scipy.stats import beta, gamma
 
 import plotly
@@ -89,19 +89,15 @@ class ExperimentDesignAPP:
         n_samples_diff_pct_txt = f'~{n_samples_diff_pct:.1f}%' #  if n_samples_diff > 1e6 else '> 1 Million'
 
         # Show how many samples is saved from using Bayesian approach
-        if campaign_type == 'RecSys':
-            n_days = n_samples_bayes / (n_impr_per_week / 7)
+        if campaign_type == 'Paid Media':
             n_weeks = n_samples_bayes / n_impr_per_week
-            if n_weeks >= 2:
-                n_duration_txt = f'~{int(np.ceil(n_weeks))} weeks'
-            else:
-                n_duration_txt = f'~{int(np.ceil(n_days))} days'
+            n_weeks_txt = f'~{int(np.ceil(n_weeks))} weeks'
 
             col1, col2 = st.columns(2)
             with col1:    
                 self.utils.show_value_block(n_samples_bayes_txt, txt_n_samples, color=self.color_succes)
             with col2:
-                self.utils.show_value_block(n_duration_txt, 'Test duration', color=self.color_succes)
+                self.utils.show_value_block(n_weeks_txt, 'Test duration', color=self.color_succes)
         else:
             self.utils.show_value_block(n_samples_bayes_txt, txt_n_samples, color=self.color_succes)
         st.markdown("<br>", unsafe_allow_html=True)
@@ -203,24 +199,24 @@ class ExperimentDesignAPP:
         # st.markdown("""<hr style='margin-top: 0px; margin-bottom: 0px;'>""", unsafe_allow_html=True)
 
         # = INPUT ========================================
-        # self.show_buttons.campaign_type()
-        # campaign_type = st.session_state['campaign_type']
-        # self.show_buttons.metric()
-        # metric = st.session_state['metric']
+        self.show_buttons.campaign_type()
+        campaign_type = st.session_state['campaign_type']
+        self.show_buttons.metric()
+        metric = st.session_state['metric']
 
-        options = ['RecSys', 'E-Mails']
-        campaign_type = st.selectbox('Select Campaing Type', options)
-
-        if campaign_type == 'RecSys':
-            options = ['Click-Through-Rate (CTR)', 'Conversion-Rate (CVR)', 'Cost-per-Click (CpC)', 'Cost-per-Acquisition (CpA)']
-            metric = st.selectbox('Select Metric', options)
-            txt_n_samples = '#Unique visitors per variant'
+        # options = ['E-Mails', 'Paid Media']
+        # campaign_type = st.selectbox('Select Campaing Type', options)
 
         if campaign_type == 'E-Mails':
-            options = ['Open-Rate (OR)', 'Click-Through-Rate (CTR)']
-            metric = st.selectbox('Select Metrics family', options)
-            n_impr_per_week = 0
+            # options = ['Open-Rate (OR)', 'Click-Through-Rate (CTR)']
+            # metric = st.selectbox('Select Metrics family', options)
+            # n_impr_per_week = 0
             txt_n_samples = '#Send outs per variant'
+
+        if campaign_type == 'Paid Media':
+            # options = ['Click-Through-Rate (CTR)', 'Conversion-Rate (CVR)', 'Cost-per-Click (CpC)', 'Cost-per-Acquisition (CpA)']
+            # metric = st.selectbox('Select Metric', options)
+            txt_n_samples = '#Unique visitors per variant'
 
         # create two html blocks side by side where data is entered for control and test group
         col1, col2 = st.columns(2)
@@ -229,7 +225,7 @@ class ExperimentDesignAPP:
             threshold = st.number_input('Acceptance Threshold [%]', min_value=0.0, max_value=99.9, value=95.0, step=1.0, format='%.1f')
         with col2:
             lift = st.number_input('Expected Lift [%]', min_value=0.0, max_value=None, value=15.0, step=0.1, format='%.1f')
-            if campaign_type == 'RecSys':
+            if campaign_type == 'Paid Media':
                 n_impr_per_week = st.number_input('Expected impressions per week', min_value=0, max_value=None, value=10_000, step=10, format='%d')
             else:
                 n_impr_per_week = 0
@@ -252,12 +248,13 @@ class ExperimentDesignAPP:
 
         # = CALCULATIONS ========================================
         # calc. sample size for both Bayes and Hypothesis testing (to illustate the difference)
-        if metric in  ['Open-Rate (OR)', 'Click-Through-Rate (CTR)', 'Conversion-Rate (CVR)']:
+        # if metric in  ['Open-Rate (OR)', 'Click-Through-Rate (CTR)', 'Conversion-Rate (CVR)']:
+        if metric in  ['OR', 'CTR', 'CVR']:
             # Number of required samples - bayesian
             n_samples_required_bayes, impr_list, perf_list = self.bayes.calc_sample_size(Perf_A, lift, threshold=threshold, metric=metric, precision=bayesian_precision)
 
             # Number of required samples - hypothesis testing - as reference
-            n_samples_required_hypo, Z_a, Z_b = self.hypo.calc_sample_size(test_type='Chi-square Test', p_a=Perf_A, p_b=Perf_B, alpha=alpha, beta=1-0.8, alpha_side='single')
+            n_samples_required_hypo, Z_a, Z_b = self.hypo.calc_sample_size(test_type='Chi-square Test', p_a=Perf_A, p_b=Perf_B, alpha=alpha, beta=1-0.8, alpha_side='single', beta_side='single')
 
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -272,8 +269,7 @@ class ExperimentDesignAPP:
 
         if metric in  ['Cost-per-Click (CpC)', 'Cost-per-Acquisition (CpA)']:
             st.markdown("Not implemented yet...", unsafe_allow_html=True)
-            # Number of required samples - bayesian
-            n_samples_required_bayes, impr_list, perf_list = self.bayes.calc_sample_size(Perf_A, lift, threshold=threshold, metric=metric, precision=bayesian_precision)
+
 
 
     def plot_decision_analysis(self, impr_list: List[int], perf_list: List[float],
@@ -310,8 +306,7 @@ class ExperimentDesignAPP:
     def main(self):
         """Run this function to display the Streamlit app."""
         
-        self.utils.show_headline('A/B TEST EXPERIMENT DESIGN', 'h1')
-        self.utils.show_headline('Calculates the required #samples', 'h4')
+        self.utils.show_headline('A/B TEST EXPERIMENT DESIGN (BETA)', 'h1')
 
         # make list of options for the dropdown
         # options = ['Bayesian Test', 'Hypothesis Test']
