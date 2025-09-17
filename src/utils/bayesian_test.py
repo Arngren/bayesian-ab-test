@@ -303,7 +303,7 @@ class Bayesian_AB_Test:
         # df['P_BA_g'] = df.progress_apply(lambda x: self.p_ba(rv_a=gamma(a=x['a_a'],scale=x['scale_a']), rv_b=gamma(a=x['a_b'],scale=x['scale_b']), n_samples=n_samples), axis=1)
         # df['P_AB_g'] = 1 - df.P_BA_g
         # P = df.progress_apply(lambda x: self.p_ab( [gamma(a=x['a_a'],scale=x['scale_a']), gamma(a=x['a_b'],scale=x['scale_b'])], thr=1, n_samples=n_samples), axis=1)
-        results = df.progress_apply(lambda x: self.p_ab_loss( [gamma(a=x['a_a'],scale=x['scale_a']), gamma(a=x['a_b'],scale=x['scale_b'])], thr=1, n_samples=n_samples), axis=1)
+        results = df.progress_apply(lambda x: self.p_ab_loss( [gamma(a=x['a_a'],scale=x['scale_a']), gamma(a=x['a_b'],scale=x['scale_b'])], best='min', thr=1, n_samples=n_samples), axis=1)
         df['P_AB_g'] = [_[0][0] for _ in results]
         df['P_BA_g'] = [_[0][1] for _ in results]
         df['loss_cpc_a'] = [_[1][0] for _ in results]
