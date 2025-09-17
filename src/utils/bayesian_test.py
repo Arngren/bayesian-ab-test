@@ -26,10 +26,10 @@ class Bayesian_AB_Test:
     def set_rv(self, rv, name):
         self.rv.update({name: rv})
 
-    def B(self, alpha, beta):
-        """ mapper function for the beta distribution
-        """
-        return scipy.special.beta(alpha, beta)
+    # def B(self, alpha, beta):
+    #     """ mapper function for the beta distribution
+    #     """
+    #     return scipy.special.beta(alpha, beta)
 
     def p_overlap(self, rv_a, rv_b, metric: str='ks', n_samples: int=10000) -> float:
         """ calc. the overlap between two probability distribution rv_a and rv_b
@@ -70,10 +70,84 @@ class Bayesian_AB_Test:
             pdf_b = [rv_b.pdf(_) for _ in x]
             jsd = jensenshannon( pdf_a, pdf_b )
             return jsd
+    
+
+    def calc_sample_size(self, perf_A: float, lift: float, threshold: float, metric: str, precision: str = 'Low') -> int:
+        """ calc. the sample size to be used in statistical testing
+        
+        Args:
+            perf_A (float): performance of variant A, eg. p_a = 0.35 (ctr)
+            lift (float): expected lift in performance, eg. lift = 0.1 (10%)
+            threshold (float): threshold for the probability of B > A
+            metric (str): metric to use for calc. the sample size
+            precision (str): precision of the sample size calculation
+
+        Returns:
+            impr_thr (int): number of impressions needed to reach the threshold
+            impr_list (List): list of impressions
+            PA (List): list of probabilities that B > A
+        """
+
+        def __calc_threshold(impr_list, perf_A, perf_B, n_samples=20000):
+            """ Internal function to calc. the threshold
+
+            Args:
+                impr_list (List): list of impressions
+                perf_A (float): performance of variant A
+                perf_B (float): performance of variant B
+                n_samples (int): number of samples
+
+            Returns:
+                impr_thr (int): number of impressions needed to reach the threshold
+                PA (List): list of probabilities that B > A
+            """
+            PA =[]
+            for impr in impr_list:
+                # if metric in  ['CTR, CVR']:
+                success_a = int(impr * perf_A)
+                success_b = int(impr * perf_B)                    
+                rv_a, rv_b = beta(success_a+1, impr-success_a+1), beta(success_b+1, impr-success_b+1)
+                # if metric ==  ['CpC, CpA']:
+                #     rv_a, rv_b = beta(success_a+1, impr-success_a+1), beta(success_b+1, impr-success_b+1)
+
+                # calc. prob. of B > A
+                P, _ = self.p_ab_loss( [rv_a, rv_b], best='max', n_samples=n_samples )
+                PA += [ P[1] ] # extract P(B>A)
+
+            # identify 0.95 in PA
+            id_thr = np.argmax(np.array(PA) > threshold)
+            impr_thr = impr_list[id_thr]
+            return impr_thr, PA
+
+        # precision
+        if precision == 'Low':
+            n_impr, n_samples = 1_00, 1_000
+        if precision == 'Medium':
+            n_impr, n_samples = 1_000, 20_000
+        if precision == 'High':
+            n_impr, n_samples = 1_000, 100_000
+
+        # calc. CTR_B
+        perf_B = perf_A * (1+lift/100)
+
+        # Sweep through the number of impressions and identify the threshold
+        impr_list = np.linspace(1, 1_000_000, 100, dtype=int)
+        impr_thr, PA = __calc_threshold(impr_list, perf_A, perf_B, n_samples=10000)
+
+        # Refine the threshold by zooming in on the threshold interval
+        if impr_thr > 1: # success
+            impr_list = np.linspace(1, impr_thr*1.1, n_impr, dtype=int)
+            impr_thr, PA = __calc_threshold(impr_list, perf_A, perf_B, n_samples=n_samples)
+            # round to nearest 100
+            impr_thr = int(np.ceil(impr_thr/100)*100)
+        else:
+            impr_thr = -1 # to indidate that the threshold is not reached
+
+        return impr_thr, impr_list, PA
 
 
     def p_ab_loss(self, rvs: List, best: str='max', thr: float=1, n_samples: int=10_000):
-        """ Calc. probability that all variant are better than the rest and corresponding loss
+        """ Calc. probability that all variants are better than the rest and corresponding loss
 
         Args:
             rvs (List): list of scipy.stats objects
@@ -114,6 +188,21 @@ class Bayesian_AB_Test:
 
         return P_ab_thr, loss
 
+    def hpdr(self, rv, thr: float=0.95):
+        """ calc. the highest posterior density region (HPDR) for a given threshold
+        
+        Args:
+            rv (scipy.stats): random variable function
+            thr (float): threshold for the HPDR
+
+        Returns:
+            hpdr (List): highest posterior density region
+        """
+        # import scipy.stats as stats
+        lower_bound = rv.ppf((1 - thr) / 2)
+        upper_bound = rv.ppf(1 - (1 - thr) / 2)
+        return (lower_bound, upper_bound)
+    
 
     def power_analysis(self, ctr, lift, n_samples=1000):
         """ calc. power analysis for different sample sizes
@@ -214,7 +303,7 @@ class Bayesian_AB_Test:
         # df['P_BA_g'] = df.progress_apply(lambda x: self.p_ba(rv_a=gamma(a=x['a_a'],scale=x['scale_a']), rv_b=gamma(a=x['a_b'],scale=x['scale_b']), n_samples=n_samples), axis=1)
         # df['P_AB_g'] = 1 - df.P_BA_g
         # P = df.progress_apply(lambda x: self.p_ab( [gamma(a=x['a_a'],scale=x['scale_a']), gamma(a=x['a_b'],scale=x['scale_b'])], thr=1, n_samples=n_samples), axis=1)
-        results = df.progress_apply(lambda x: self.p_ab_loss( [gamma(a=x['a_a'],scale=x['scale_a']), gamma(a=x['a_b'],scale=x['scale_b'])], thr=1, n_samples=n_samples), axis=1)
+        results = df.progress_apply(lambda x: self.p_ab_loss( [gamma(a=x['a_a'],scale=x['scale_a']), gamma(a=x['a_b'],scale=x['scale_b'])], best='min', thr=1, n_samples=n_samples), axis=1)
         df['P_AB_g'] = [_[0][0] for _ in results]
         df['P_BA_g'] = [_[0][1] for _ in results]
         df['loss_cpc_a'] = [_[1][0] for _ in results]
