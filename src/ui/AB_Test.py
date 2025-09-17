@@ -17,6 +17,7 @@ from utils.graph import Visualisation
 # Main function
 class ABTestAPP:
     def __init__(self) -> None:
+        st.set_page_config(layout="centered")
 
         self.plot = Visualisation() # (renderer="vscode")
         self.plot_width = 700
