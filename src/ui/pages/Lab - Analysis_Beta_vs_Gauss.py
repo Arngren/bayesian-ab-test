@@ -23,6 +23,8 @@ import streamlit as st
 # Main function
 class EvaluationAPP:
     def __init__(self) -> None:
+        st.set_page_config(layout="wide")
+
         self.hypo = Hypothesis_AB_Test()
         self.bayes = Bayesian_AB_Test()
 
@@ -243,7 +245,9 @@ class EvaluationAPP:
             mean_a, std_a = perf_A, np.sqrt(perf_A * (1 - perf_A) / self.conv_A)
             mean_b, std_b = perf_B, np.sqrt(perf_B * (1 - perf_B) / self.conv_B)
             rv_a_gauss, rv_b_gauss = norm(mean_a, std_a), norm(mean_b, std_b)
-            st.markdown(f"std_a: {std_a} - std_b: {std_b}", unsafe_allow_html=True)       
+            st.markdown(f"perf_A: {perf_A} - conv_A: {self.conv_A}", unsafe_allow_html=True)
+            st.markdown(f"perf_B: {perf_B} - conv_B: {self.conv_B}", unsafe_allow_html=True)
+            st.markdown(f"std_a: {std_a} - std_b: {std_b}", unsafe_allow_html=True)
 
         # SHOW METRICS
         self.show_metrics(metric=st.session_state['metric'])
